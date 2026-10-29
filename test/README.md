@@ -20,3 +20,5 @@ The demo starts right after power-on and repeats the following, turning the pict
 * Circles
 * Display inversion
 * Scrolling texts
+
+The SSD1306 is checked and initialized again at the start of every section, so it can be plugged in (or replugged) while the demo is running: it shows up from the next section. Sections are skipped while no SSD1306 answers.

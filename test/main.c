@@ -20,6 +20,48 @@ static void oled_set_rotation(uint rotation)
     i2c_write_blocking(disp.i2c_i, disp.address, cmds, sizeof(cmds), false);
 }
 
+static bool disp_allocated = false;     // ssd1306_init() succeeded once: disp.buffer is valid
+static bool disp_present = false;       // the panel answered at the last oled_init()
+
+// SSD1306 NOP: acknowledged only when a panel is on the bus
+static bool oled_probe(void)
+{
+    const uint8_t cmds[] = { 0x00, 0xE3 };
+    return i2c_write_timeout_us(OLED_I2C_INST_DEFAULT, OLED_I2C_ADDR_DEFAULT, cmds, sizeof(cmds), false, 5000) == (int) sizeof(cmds);
+}
+
+// (Re)initialise the panel if it is there: called before every demo section,
+// so a panel plugged in (or power-cycled) while the demo is running comes up
+// again. Returns false without touching the panel when nothing answers.
+static bool oled_init(uint rotation)
+{
+    if (!oled_probe()) {
+        if (disp_present) {
+            printf("SSD1306 removed\n");
+        }
+        disp_present = false;
+        return false;
+    }
+    if (!disp_present) {
+        // the module's reset is an on-board RC: give it a moment after power-on / plug-in
+        sleep_ms(100);
+    }
+    // ssd1306_init() allocates the frame buffer every time
+    if (disp_allocated) {
+        ssd1306_deinit(&disp);
+    }
+    disp.external_vcc = false;
+    disp_allocated = ssd1306_init(&disp, OLED_WIDTH, OLED_HEIGHT, OLED_I2C_ADDR_DEFAULT, OLED_I2C_INST_DEFAULT);
+    if (disp_allocated) {
+        oled_set_rotation(rotation);
+        if (!disp_present) {
+            printf("SSD1306 initialized\n");
+        }
+    }
+    disp_present = disp_allocated;
+    return disp_present;
+}
+
 static void draw_circle(int32_t x0, int32_t y0, int32_t r)
 {
     int32_t x = r, y = 0, err = 1 - r;
@@ -197,42 +239,27 @@ int main()
     printf("SSD1306 %dx%d at 0x%02X (SDA=GP%d SCL=GP%d)\n",
            OLED_WIDTH, OLED_HEIGHT, OLED_I2C_ADDR_DEFAULT, PIN_OLED_SDA_DEFAULT, PIN_OLED_SCL_DEFAULT);
 
-    // the module's reset is an on-board RC: give the panel a moment after power-on
-    sleep_ms(100);
-    disp.external_vcc = false;
-    if (!ssd1306_init(&disp, OLED_WIDTH, OLED_HEIGHT, OLED_I2C_ADDR_DEFAULT, OLED_I2C_INST_DEFAULT)) {
-        printf("ssd1306_init failed\n");
-        while (true) {
-            tight_loop_contents();
-        }
+    if (!oled_init(rotation)) {
+        printf("SSD1306 not found (retried at every demo section)\n");
     }
 
+    // every section starts with oled_init(), so that a panel plugged in while the
+    // demo is running is set up and shows the next section; without a panel the
+    // section is skipped
+#define DEMO_SECTION(call) do { if (oled_init(rotation)) { call; } sleep_ms(TimeStay); } while (0)
     while (1) {
         printf("Rotation: %d deg\n", rotation * 180);
-        oled_set_rotation(rotation);
 
-        testtexts();
-        sleep_ms(TimeStay);
-
-        testpoints();
-        sleep_ms(TimeStay);
-
-        testlines();
-        sleep_ms(TimeStay);
-
-        testdrawrects();
-        sleep_ms(TimeStay);
-
-        testfillrects();
-        sleep_ms(TimeStay);
-
-        testdrawcircles(10);
-        sleep_ms(TimeStay);
-
-        testinvert(TimeStay);
+        DEMO_SECTION(testtexts());
+        DEMO_SECTION(testpoints());
+        DEMO_SECTION(testlines());
+        DEMO_SECTION(testdrawrects());
+        DEMO_SECTION(testfillrects());
+        DEMO_SECTION(testdrawcircles(10));
+        DEMO_SECTION(testinvert(TimeStay));
 
         // Demo end (Text Scroll)
-        testscrolltexts(rotation);
+        DEMO_SECTION(testscrolltexts(rotation));
 
         rotation ^= 1;
     }
