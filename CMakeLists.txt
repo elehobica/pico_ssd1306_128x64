@@ -5,12 +5,14 @@
 #------------------------------------------------------
 
 # SSD1306 128x64 OLED (I2C) library: daschr/pico-ssd1306 (submodule at
-# lib/pico-ssd1306) plus pico_ssd1306_128x64.h (default pins, C++ guard)
+# lib/pico-ssd1306) plus pico_ssd1306_128x64.c/h (default pins, C++ guard,
+# SSD1306 / SH1106 detection and frame transfer)
 if (NOT TARGET pico_ssd1306_128x64)
     add_library(pico_ssd1306_128x64 INTERFACE)
 
     target_sources(pico_ssd1306_128x64 INTERFACE
         ${CMAKE_CURRENT_LIST_DIR}/lib/pico-ssd1306/ssd1306.c
+        ${CMAKE_CURRENT_LIST_DIR}/pico_ssd1306_128x64.c
     )
 
     target_link_libraries(pico_ssd1306_128x64 INTERFACE

@@ -43,3 +43,38 @@ extern "C" {
 
 #define OLED_WIDTH              128
 #define OLED_HEIGHT             64
+
+// Modules that look the same carry SSD1306 (or the compatible SSD1315) or SH1106
+typedef enum {
+    OLED_SSD1306 = 0,
+    OLED_SH1106,
+} oled_controller_t;
+
+// used when oled_detect() cannot tell
+#ifndef OLED_CONTROLLER_DEFAULT
+#define OLED_CONTROLLER_DEFAULT OLED_SSD1306
+#endif
+// SH1106: 132 columns of RAM, the 128 px panel starts at this column
+#ifndef SH1106_COL_OFS
+#define SH1106_COL_OFS          2
+#endif
+
+#define OLED_DETECT_READ_BYTES  4
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// call after ssd1306_init(): page addressing, which oled_show() needs
+bool oled_set_page_addressing(ssd1306_t *p);
+// status byte (D/C# = 0 read); false if the read fails
+bool oled_read_status(ssd1306_t *p, uint8_t *status);
+// SSD1306 / SH1106 by display RAM read-back; false if undecidable.
+// readback: the raw bytes read (for logging). Overwrites page 0 of the panel.
+bool oled_detect(ssd1306_t *p, oled_controller_t *ctrl, uint8_t readback[OLED_DETECT_READ_BYTES]);
+// use instead of ssd1306_show(): works on both controllers
+void oled_show(ssd1306_t *p, oled_controller_t ctrl);
+
+#ifdef __cplusplus
+}
+#endif

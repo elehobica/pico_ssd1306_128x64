@@ -22,8 +22,9 @@ static void oled_set_rotation(uint rotation)
 
 static bool disp_allocated = false;     // ssd1306_init() succeeded once: disp.buffer is valid
 static bool disp_present = false;       // the panel answered at the last oled_init()
+static oled_controller_t disp_ctrl = OLED_CONTROLLER_DEFAULT;
 
-// SSD1306 NOP: acknowledged only when a panel is on the bus
+// NOP (0xE3 on both SSD1306 and SH1106): acknowledged only when a panel is on the bus
 static bool oled_probe(void)
 {
     const uint8_t cmds[] = { 0x00, 0xE3 };
@@ -37,7 +38,7 @@ static bool oled_init(uint rotation)
 {
     if (!oled_probe()) {
         if (disp_present) {
-            printf("SSD1306 removed\n");
+            printf("OLED removed\n");
         }
         disp_present = false;
         return false;
@@ -53,10 +54,22 @@ static bool oled_init(uint rotation)
     disp.external_vcc = false;
     disp_allocated = ssd1306_init(&disp, OLED_WIDTH, OLED_HEIGHT, OLED_I2C_ADDR_DEFAULT, OLED_I2C_INST_DEFAULT);
     if (disp_allocated) {
+        // SSD1306 or SH1106: detected again every time, so a module of the other
+        // kind can be swapped in while the demo is running
+        uint8_t status = 0;
+        const bool status_ok = oled_read_status(&disp, &status);
+        oled_controller_t ctrl = OLED_CONTROLLER_DEFAULT;
+        uint8_t rb[OLED_DETECT_READ_BYTES];
+        const bool detected = oled_detect(&disp, &ctrl, rb);
+        oled_set_page_addressing(&disp);
         oled_set_rotation(rotation);
-        if (!disp_present) {
-            printf("SSD1306 initialized\n");
+        if (!disp_present || ctrl != disp_ctrl) {
+            printf("OLED initialized: %s (%s; status %s0x%02X, RAM read-back %02X %02X %02X %02X)\n",
+                   (ctrl == OLED_SH1106) ? "SH1106" : "SSD1306",
+                   detected ? "detected" : "undecidable, default",
+                   status_ok ? "" : "read failed ", status, rb[0], rb[1], rb[2], rb[3]);
         }
+        disp_ctrl = ctrl;
     }
     disp_present = disp_allocated;
     return disp_present;
@@ -105,7 +118,7 @@ void testtexts()
     ssd1306_draw_string(&disp, 31, 1*8, 1, "Hello World");
     ssd1306_draw_string(&disp, 35, 2*8, 2, "Hello");
     ssd1306_draw_string(&disp, 38, 5*8, 3, "SSD");
-    ssd1306_show(&disp);
+    oled_show(&disp, disp_ctrl);
 }
 
 void testpoints()
@@ -120,7 +133,7 @@ void testpoints()
             }
         }
     }
-    ssd1306_show(&disp);
+    oled_show(&disp, disp_ctrl);
 }
 
 static void testlines_from(int32_t x0, int32_t y0)
@@ -130,11 +143,11 @@ static void testlines_from(int32_t x0, int32_t y0)
     ssd1306_clear(&disp);
     for (int32_t x=0; x < OLED_WIDTH; x+=6) {
         ssd1306_draw_line(&disp, x0, y0, x, y1);
-        ssd1306_show(&disp);
+        oled_show(&disp, disp_ctrl);
     }
     for (int32_t y=0; y < OLED_HEIGHT; y+=6) {
         ssd1306_draw_line(&disp, x0, y0, x1, y);
-        ssd1306_show(&disp);
+        oled_show(&disp, disp_ctrl);
     }
 }
 
@@ -153,7 +166,7 @@ void testdrawrects()
         const int32_t h = x*OLED_HEIGHT/OLED_WIDTH;
         ssd1306_draw_empty_square(&disp, OLED_WIDTH/2 -x/2, OLED_HEIGHT/2 -h/2, x, h);
     }
-    ssd1306_show(&disp);
+    oled_show(&disp, disp_ctrl);
 }
 
 void testfillrects()
@@ -169,7 +182,7 @@ void testfillrects()
         }
         fill = !fill;
     }
-    ssd1306_show(&disp);
+    oled_show(&disp, disp_ctrl);
 }
 
 void testdrawcircles(int32_t radius)
@@ -182,7 +195,7 @@ void testdrawcircles(int32_t radius)
             }
         }
     }
-    ssd1306_show(&disp);
+    oled_show(&disp, disp_ctrl);
 }
 
 void testinvert(uint32_t time_stay)
@@ -190,7 +203,7 @@ void testinvert(uint32_t time_stay)
     ssd1306_clear(&disp);
     ssd1306_draw_string(&disp, 29, 24, 2, "Invert");
     ssd1306_draw_empty_square(&disp, 0, 0, OLED_WIDTH-1, OLED_HEIGHT-1);
-    ssd1306_show(&disp);
+    oled_show(&disp, disp_ctrl);
     for (int i = 0; i < 4; i++) {
         ssd1306_invert(&disp, (i & 1) ? 0 : 1);
         sleep_ms(time_stay / 2);
@@ -215,7 +228,7 @@ void testscrolltexts(uint rotation)
         snprintf(str, sizeof(str), "Frame: %3d", i);
         ssd1306_clear_square(&disp, 0, 7*8, OLED_WIDTH, 8);
         ssd1306_draw_string(&disp, 0, 7*8, 1, str);
-        ssd1306_show(&disp);
+        oled_show(&disp, disp_ctrl);
     }
 }
 
@@ -236,11 +249,11 @@ int main()
     printf("=========================\n");
     printf("== pico_ssd1306_128x64 ==\n");
     printf("=========================\n");
-    printf("SSD1306 %dx%d at 0x%02X (SDA=GP%d SCL=GP%d)\n",
+    printf("OLED %dx%d at 0x%02X (SDA=GP%d SCL=GP%d)\n",
            OLED_WIDTH, OLED_HEIGHT, OLED_I2C_ADDR_DEFAULT, PIN_OLED_SDA_DEFAULT, PIN_OLED_SCL_DEFAULT);
 
     if (!oled_init(rotation)) {
-        printf("SSD1306 not found (retried at every demo section)\n");
+        printf("OLED not found (retried at every demo section)\n");
     }
 
     // every section starts with oled_init(), so that a panel plugged in while the

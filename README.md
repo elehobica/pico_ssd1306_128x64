@@ -96,3 +96,4 @@ target_link_libraries(<your target> pico_ssd1306_128x64)
 * Include `pico_ssd1306_128x64.h` (it includes the driver's `ssd1306.h` with a C++ guard)
 * Default wiring macros (`OLED_I2C_INST_DEFAULT`, `OLED_I2C_FREQ_DEFAULT`, `PIN_OLED_SDA_DEFAULT`, `PIN_OLED_SCL_DEFAULT`, `OLED_I2C_ADDR_DEFAULT`) can be overridden by `target_compile_definitions()`
 * See [test/main.c](test/main.c) for the I2C setup and `ssd1306_init()`
+* SH1106 modules (often sold as SSD1306) are supported: call `oled_set_page_addressing()` after `ssd1306_init()`, detect the controller with `oled_detect()` (falls back to `OLED_CONTROLLER_DEFAULT` when undecidable) and use `oled_show()` instead of `ssd1306_show()`
