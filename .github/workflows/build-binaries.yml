@@ -29,7 +29,7 @@ jobs:
       RELEASE_DIR: Release
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Build
@@ -42,7 +42,7 @@ jobs:
           identifier: ${{ matrix.board}}
           output_path: ${{ env.RELEASE_DIR }}
       - name: Upload production artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: dist-binaries-${{ matrix.project }}-${{ matrix.board }}
           path: |
