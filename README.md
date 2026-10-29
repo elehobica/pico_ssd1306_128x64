@@ -1,12 +1,14 @@
-# SSD1306 128x64 OLED Library for Raspberry Pi Pico / Pico 2
+# SSD1306 / SH1106 128x64 OLED Library for Raspberry Pi Pico / Pico 2
 
 [![Build](https://github.com/elehobica/pico_ssd1306_128x64/actions/workflows/build-binaries.yml/badge.svg)](https://github.com/elehobica/pico_ssd1306_128x64/actions/workflows/build-binaries.yml)
 
 ## Overview
-SSD1306 128x64 OLED (I2C) display library and demo for Raspberry Pi Pico / Pico 2
+SSD1306 / SH1106 128x64 OLED (I2C) display library and demo for Raspberry Pi Pico / Pico 2
 
 This project supports:
 * SSD1306 128x64 OLED module (4-pin I2C type)
+* SH1106 128x64 OLED module (4-pin I2C type)
+* Automatic detection of SSD1306 / SH1106
 * Drawing by [daschr/pico-ssd1306](https://github.com/daschr/pico-ssd1306) (included as a git submodule)
 
 ## Supported Board
@@ -14,11 +16,20 @@ This project supports:
 * Raspberry Pi Pico 2
 * Waveshare RP2040-Zero
 * SSD1306 128x64 OLED module (I2C)
+* SH1106 128x64 OLED module (I2C)
+
+## SSD1306 / SH1106
+OLED modules that look the same (and are often sold as "SSD1306") carry either an SSD1306 (or the compatible SSD1315) or an SH1106 controller, depending on the lot.
+* SH1106 has page addressing only and 132 columns of RAM (the 128 px panel starts at column 2). With a driver relying on SSD1306's horizontal addressing, an SH1106 module shows the whole picture squeezed into one 8 px strip and random noise elsewhere.
+* This library transfers the frame page by page (`oled_show()`), which works on both, and shifts the columns by `SH1106_COL_OFS` (2) on SH1106.
+* The controller is detected automatically (`oled_detect()`): a test pattern is written to the display RAM and read back over I2C. Only SH1106 returns the display RAM, while SSD1306 returns its status byte.
+* If a module does not connect the controller's data output to SDA, the read-back gives only 0xFF and the controller cannot be told; `OLED_CONTROLLER_DEFAULT` (`OLED_SSD1306` unless overridden by `target_compile_definitions()`) is used then.
+* The demo prints the result to the serial port, e.g. `OLED initialized: SH1106 (detected; ...)`
 
 ## Pin Assignment
-### SSD1306 128x64 OLED
+### SSD1306 / SH1106 128x64 OLED
 
-| Pin Name | Function | SSD1306 OLED Module |
+| Pin Name | Function | OLED Module |
 ----|----|----
 | GP2 | I2C1_SDA | SDA |
 | GP3 | I2C1_SCL | SCL |

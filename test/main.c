@@ -23,6 +23,12 @@ static void oled_set_rotation(uint rotation)
 static bool disp_allocated = false;     // ssd1306_init() succeeded once: disp.buffer is valid
 static bool disp_present = false;       // the panel answered at the last oled_init()
 static oled_controller_t disp_ctrl = OLED_CONTROLLER_DEFAULT;
+static bool disp_ctrl_detected = false; // false: oled_detect() could not tell, disp_ctrl is the default
+
+static const char *oled_controller_name(oled_controller_t ctrl)
+{
+    return (ctrl == OLED_SH1106) ? "SH1106" : "SSD1306";
+}
 
 // NOP (0xE3 on both SSD1306 and SH1106): acknowledged only when a panel is on the bus
 static bool oled_probe(void)
@@ -65,11 +71,12 @@ static bool oled_init(uint rotation)
         oled_set_rotation(rotation);
         if (!disp_present || ctrl != disp_ctrl) {
             printf("OLED initialized: %s (%s; status %s0x%02X, RAM read-back %02X %02X %02X %02X)\n",
-                   (ctrl == OLED_SH1106) ? "SH1106" : "SSD1306",
+                   oled_controller_name(ctrl),
                    detected ? "detected" : "undecidable, default",
                    status_ok ? "" : "read failed ", status, rb[0], rb[1], rb[2], rb[3]);
         }
         disp_ctrl = ctrl;
+        disp_ctrl_detected = detected;
     }
     disp_present = disp_allocated;
     return disp_present;
@@ -218,6 +225,8 @@ void testscrolltexts(uint rotation)
     uint16_t sft1 = 0;
 
     ssd1306_clear(&disp);
+    snprintf(str, sizeof(str), "Driver: %s%s", oled_controller_name(disp_ctrl), disp_ctrl_detected ? "" : " (def)");
+    ssd1306_draw_string(&disp, 0, 4*8, 1, str);
     snprintf(str, sizeof(str), "Rot: %3d", rotation * 180);
     ssd1306_draw_string(&disp, 0, 5*8, 1, str);
     for (int i = 0; i < 512; i++) {

@@ -1,4 +1,4 @@
-# Raspberry Pi Pico SSD1306 128x64 OLED Library Demo test
+# Raspberry Pi Pico SSD1306 / SH1106 128x64 OLED Library Demo test
 
 ## Pin Assignment
 In addition to original connection
@@ -21,4 +21,4 @@ The demo starts right after power-on and repeats the following, turning the pict
 * Display inversion
 * Scrolling texts
 
-The SSD1306 is checked and initialized again at the start of every section, so it can be plugged in (or replugged) while the demo is running: it shows up from the next section. Sections are skipped while no SSD1306 answers.
+The OLED is checked, initialized and its controller (SSD1306 / SH1106) detected again at the start of every section, so it can be plugged in (or replugged) while the demo is running: it shows up from the next section. Sections are skipped while no OLED answers.
