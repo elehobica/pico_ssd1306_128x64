@@ -24,6 +24,7 @@ jobs:
     permissions:
       contents: write
       checks: write
+      actions: read
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       CHANGELOG: ./CHANGELOG.md

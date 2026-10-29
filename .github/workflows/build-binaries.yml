@@ -68,6 +68,15 @@ jobs:
   call-upload-release-asset:
     needs: [build-binaries, release-tag-condition]
     if: ${{ needs.release-tag-condition.outputs.matched == 'true' }}
+    # the called workflow needs these; without an explicit grant the caller
+    # falls back to the repository default (read-only) and validation fails
+    # at startup (even when the if: above is false).
+    # actions: read is for gh run download (the artifact listing is an actions
+    # API; an explicit permissions block sets everything not listed to none)
+    permissions:
+      contents: write
+      checks: write
+      actions: read
     uses: ./.github/workflows/upload-release-asset.yml
     with:
       source_run_id: ${{ github.run_id }}
